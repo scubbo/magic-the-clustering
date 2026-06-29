@@ -5,3 +5,4 @@ __pycache__/
 .pytest_cache/
 data/cards.json
 .DS_Store
+.vercel
