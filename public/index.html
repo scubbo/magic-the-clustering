@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Magic the Clustering</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Magic the Clustering</h1>
+    <p class="subtitle">Guess today's secret Magic card by similarity.</p>
+  </header>
+
+  <main>
+    <section id="guess-section">
+      <div id="autocomplete-wrapper">
+        <input
+          id="guess-input"
+          type="text"
+          autocomplete="off"
+          placeholder="Type a card name…"
+          aria-label="Card name"
+          aria-autocomplete="list"
+          aria-controls="autocomplete-list"
+        />
+        <ul id="autocomplete-list" role="listbox" hidden></ul>
+      </div>
+      <button id="guess-btn" type="button">Guess</button>
+      <button id="surrender-btn" type="button" class="secondary">Give up</button>
+    </section>
+
+    <section id="result-section" hidden>
+      <h2>Today's card was…</h2>
+      <div id="revealed-card"></div>
+    </section>
+
+    <section id="history-section">
+      <table id="history-table" aria-label="Guess history">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Card</th>
+            <th>Similarity</th>
+            <th>Rank</th>
+          </tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
