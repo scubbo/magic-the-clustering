@@ -23,6 +23,11 @@
   const historyBody = document.getElementById("history-body");
   const resultSection = document.getElementById("result-section");
   const revealedCard = document.getElementById("revealed-card");
+  const bestGuessSection = document.getElementById("best-guess-section");
+  const bestGuessName = document.getElementById("best-guess-name");
+  const bestGuessBar = document.getElementById("best-guess-bar");
+  const bestGuessPct = document.getElementById("best-guess-pct");
+  const bestGuessRank = document.getElementById("best-guess-rank");
 
   // ---------------------------------------------------------------------------
   // Persistence
@@ -68,6 +73,25 @@
     return tr;
   }
 
+  function getBestGuess() {
+    if (!state.guesses.length) return null;
+    return state.guesses.reduce((best, g) =>
+      g.similarity_pct > best.similarity_pct ? g : best
+    );
+  }
+
+  function renderBestGuess() {
+    const best = getBestGuess();
+    if (!best) { bestGuessSection.hidden = true; return; }
+    const tier = simTier(best.similarity_pct);
+    bestGuessName.textContent = best.name;
+    bestGuessBar.className = `sim-bar-fill ${tier}`;
+    bestGuessBar.style.width = `${best.similarity_pct}%`;
+    bestGuessPct.textContent = `${best.similarity_pct}%`;
+    bestGuessRank.textContent = `#${best.rank}`;
+    bestGuessSection.hidden = false;
+  }
+
   function renderHistory() {
     historyBody.innerHTML = "";
     // Most recent first
@@ -75,6 +99,7 @@
     reversed.forEach((g, i) => {
       historyBody.appendChild(renderGuessRow(g, state.guesses.length - 1 - i));
     });
+    renderBestGuess();
   }
 
   function renderReveal(card) {

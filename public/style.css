@@ -172,3 +172,98 @@ button:disabled { opacity: 0.4; cursor: default; }
 .tier-cold { background: var(--red); }
 
 .rank-cell { color: var(--muted); font-size: 0.85rem; }
+
+/* Pinned best guess */
+#best-guess-section {
+  background: var(--surface);
+  border: 1px solid var(--surface2);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.best-guess-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+
+.best-guess-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+#best-guess-name {
+  font-weight: 600;
+  min-width: 8rem;
+  flex-shrink: 0;
+}
+
+#best-guess-section .sim-bar-wrapper { flex: 1; }
+
+/* About section */
+#about {
+  margin: 1.5rem 0;
+  border: 1px solid var(--surface2);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+#about summary {
+  padding: 0.65rem 0.9rem;
+  background: var(--surface);
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#about summary::before {
+  content: "▶";
+  font-size: 0.7rem;
+  transition: transform 0.2s;
+  color: var(--muted);
+}
+
+#about[open] summary::before { transform: rotate(90deg); }
+
+.about-content {
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+  border-top: 1px solid var(--surface2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.about-content h3 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.about-content ul {
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.about-content a { color: var(--accent); }
+
+.about-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
