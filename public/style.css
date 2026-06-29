@@ -173,8 +173,23 @@ button:disabled { opacity: 0.4; cursor: default; }
 
 .rank-cell { color: var(--muted); font-size: 0.85rem; }
 
-.card-name-cell { font-weight: 500; }
+.card-name-cell { font-weight: 500; cursor: default; }
+.card-name-cell[data-image-uri] { cursor: pointer; }
 .card-type-cell { color: var(--muted); font-size: 0.8rem; margin-top: 0.1rem; }
+
+/* Floating card image tooltip */
+#card-tooltip {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
+}
+
+#card-tooltip img {
+  width: 200px;
+  border-radius: 10px;
+  display: block;
+}
 
 .mana-cost-cell { white-space: nowrap; }
 .mana-sym { width: 1.1rem; height: 1.1rem; vertical-align: middle; margin-right: 1px; }

@@ -28,6 +28,37 @@
   const bestGuessBar = document.getElementById("best-guess-bar");
   const bestGuessPct = document.getElementById("best-guess-pct");
   const bestGuessRank = document.getElementById("best-guess-rank");
+  const cardTooltip = document.getElementById("card-tooltip");
+  const cardTooltipImg = document.getElementById("card-tooltip-img");
+
+  // ---------------------------------------------------------------------------
+  // Card image tooltip
+  // ---------------------------------------------------------------------------
+  document.addEventListener("mouseover", (e) => {
+    const el = e.target.closest("[data-image-uri]");
+    if (!el) return;
+    cardTooltipImg.src = el.dataset.imageUri;
+    cardTooltip.hidden = false;
+    positionTooltip(e);
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!cardTooltip.hidden) positionTooltip(e);
+  });
+
+  document.addEventListener("mouseout", (e) => {
+    if (e.target.closest("[data-image-uri]") && !e.relatedTarget?.closest("[data-image-uri]")) {
+      cardTooltip.hidden = true;
+    }
+  });
+
+  function positionTooltip(e) {
+    const TW = 200, OFFSET = 16;
+    let x = e.clientX + OFFSET;
+    if (x + TW > window.innerWidth - 8) x = e.clientX - TW - OFFSET;
+    cardTooltip.style.left = `${x}px`;
+    cardTooltip.style.top = `${Math.max(8, e.clientY - 60)}px`;
+  }
 
   // ---------------------------------------------------------------------------
   // Persistence
@@ -67,7 +98,7 @@
     tr.innerHTML = `
       <td>${index + 1}</td>
       <td>
-        <div class="card-name-cell">${escHtml(guess.name)}</div>
+        <div class="card-name-cell" ${guess.image_uri ? `data-image-uri="${escHtml(guess.image_uri)}"` : ""}>${escHtml(guess.name)}</div>
         <div class="card-type-cell">${escHtml(guess.type_line || "")}</div>
       </td>
       <td class="mana-cost-cell">${renderManaCost(guess.mana_cost)}</td>
@@ -96,6 +127,8 @@
     if (!best) { bestGuessSection.hidden = true; return; }
     const tier = simTier(best.similarity_pct);
     bestGuessName.textContent = best.name;
+    if (best.image_uri) bestGuessName.dataset.imageUri = best.image_uri;
+    else delete bestGuessName.dataset.imageUri;
     bestGuessBar.className = `sim-bar-fill ${tier}`;
     bestGuessBar.style.width = `${best.similarity_pct}%`;
     bestGuessPct.textContent = `${best.similarity_pct}%`;
@@ -247,6 +280,7 @@
         name: card.name,
         type_line: card.type_line || "",
         mana_cost: card.mana_cost || "",
+        image_uri: card.image_uri || "",
         similarity_pct: result.similarity_pct,
         rank: result.rank,
       };
