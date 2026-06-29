@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cp -r public dist",
-  "outputDirectory": "dist",
+  "buildCommand": "echo 'no build'",
+  "outputDirectory": "public",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.py" }
   ]
