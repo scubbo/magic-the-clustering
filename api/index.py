@@ -65,6 +65,21 @@ class CardResponse(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+@app.get("/api/debug")
+def debug():
+    task_dir = Path(__file__).parent.parent
+    try:
+        contents = sorted(str(p.relative_to(task_dir)) for p in task_dir.rglob("*") if p.is_file())
+    except Exception as e:
+        contents = [f"ERROR: {e}"]
+    return {
+        "file": str(Path(__file__)),
+        "task_dir": str(task_dir),
+        "public_exists": (task_dir / "public").exists(),
+        "contents": contents[:100],
+    }
+
+
 @app.get("/api/daily", response_model=DailyResponse)
 def daily_info():
     """Returns today's challenge metadata (no card spoilers)."""
