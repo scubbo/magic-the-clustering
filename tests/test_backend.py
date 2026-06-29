@@ -51,6 +51,14 @@ MOCK_CARDS = [
 ]
 
 
+def _make_mock_similar(cards, exclude_id, limit):
+    return [
+        {**c, "similarity_pct": 80}
+        for c in cards
+        if c["oracle_id"] != exclude_id
+    ][:limit]
+
+
 def _make_mock_index(daily_target_id: str = "aaa"):
     mock = MagicMock()
     mock.cards = MOCK_CARDS
@@ -82,6 +90,8 @@ def _make_mock_index(daily_target_id: str = "aaa"):
         return [c for c in MOCK_CARDS if q.lower() in c["name"].lower()][:limit]
 
     mock.search_by_name.side_effect = _search
+
+    mock.similar_to.side_effect = lambda oid, limit=10: _make_mock_similar(MOCK_CARDS, oid, limit)
 
     target_card = _card_by_oracle_id(daily_target_id)
     mock.daily_target.return_value = target_card
@@ -169,6 +179,31 @@ def test_search_returns_matches(client):
 def test_search_requires_query(client):
     resp = client.get("/api/cards/search")
     assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# /api/similar
+# ---------------------------------------------------------------------------
+
+def test_similar_excludes_target(client):
+    resp = client.get("/api/similar")
+    assert resp.status_code == 200
+    ids = [r["oracle_id"] for r in resp.json()]
+    assert "aaa" not in ids  # target itself excluded
+
+def test_similar_returns_other_cards(client):
+    resp = client.get("/api/similar")
+    assert len(resp.json()) > 0
+
+def test_similar_limit(client):
+    resp = client.get("/api/similar?limit=1")
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+
+def test_similar_includes_similarity_pct(client):
+    resp = client.get("/api/similar")
+    for card in resp.json():
+        assert "similarity_pct" in card
 
 
 # ---------------------------------------------------------------------------

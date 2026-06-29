@@ -13,6 +13,7 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from backend.similarity import get_index
@@ -115,9 +116,24 @@ def search_cards(q: str = Query(..., min_length=1), limit: int = Query(10, le=50
     return [{"oracle_id": c.get("oracle_id"), "name": c.get("name")} for c in results]
 
 
+@app.get("/api/similar")
+def similar_to_daily(limit: int = Query(10, le=20)):
+    """Returns the most similar cards to today's target, excluding the target itself."""
+    idx = get_index()
+    target = idx.daily_target()
+    return idx.similar_to(target["oracle_id"], limit=limit)
+
+
 @app.post("/api/surrender", response_model=CardResponse)
 def surrender():
     """Returns today's target card. Called only when the player gives up."""
     idx = get_index()
     target = idx.daily_target()
     return CardResponse(**{k: target.get(k) for k in CardResponse.model_fields})
+
+
+# Serve frontend static files — local dev only.
+# On Vercel, the public/ directory is served by the edge CDN instead.
+_public = Path(__file__).parent.parent / "public"
+if _public.exists():
+    app.mount("/", StaticFiles(directory=str(_public), html=True), name="static")

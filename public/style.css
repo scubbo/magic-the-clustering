@@ -111,6 +111,12 @@ button:disabled { opacity: 0.4; cursor: default; }
 
 #result-section h2 { margin-bottom: 0.8rem; }
 
+#similar-cards { margin-top: 1.2rem; border-top: 1px solid var(--surface2); padding-top: 1rem; }
+#similar-cards h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.6rem; }
+#similar-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: left; }
+#similar-table th { color: var(--muted); font-weight: normal; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--surface2); }
+#similar-table td { padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--surface2); }
+
 #revealed-card img {
   max-width: 240px;
   border-radius: 8px;

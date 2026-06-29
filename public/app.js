@@ -23,6 +23,8 @@
   const historyBody = document.getElementById("history-body");
   const resultSection = document.getElementById("result-section");
   const revealedCard = document.getElementById("revealed-card");
+  const similarCards = document.getElementById("similar-cards");
+  const similarBody = document.getElementById("similar-body");
   const bestGuessSection = document.getElementById("best-guess-section");
   const bestGuessName = document.getElementById("best-guess-name");
   const bestGuessBar = document.getElementById("best-guess-bar");
@@ -153,6 +155,37 @@
       <div class="card-name">${escHtml(card.name)}</div>
       <div class="card-type">${escHtml(card.type_line || "")}</div>
     `;
+  }
+
+  async function fetchAndRenderSimilar() {
+    try {
+      const res = await fetch(`${API}/similar?limit=10`);
+      if (!res.ok) return;
+      const cards = await res.json();
+      similarBody.innerHTML = "";
+      cards.forEach((c) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>
+            <span class="card-name-cell" ${c.image_uri ? `data-image-uri="${escHtml(c.image_uri)}"` : ""}>${escHtml(c.name)}</span>
+            <div class="card-type-cell">${escHtml(c.type_line || "")}</div>
+          </td>
+          <td class="mana-cost-cell">${renderManaCost(c.mana_cost)}</td>
+          <td class="sim-bar-cell">
+            <div class="sim-bar-wrapper">
+              <div class="sim-bar">
+                <div class="sim-bar-fill ${simTier(c.similarity_pct)}" style="width:${c.similarity_pct}%"></div>
+              </div>
+              <span class="sim-pct">${c.similarity_pct}%</span>
+            </div>
+          </td>
+        `;
+        similarBody.appendChild(tr);
+      });
+      similarCards.hidden = false;
+    } catch (err) {
+      console.error("Failed to fetch similar cards:", err);
+    }
   }
 
   function setGameOver() {
@@ -288,7 +321,9 @@
 
       if (result.is_correct) {
         state.won = true;
+        bestGuessSection.hidden = true;
         renderReveal(card);
+        fetchAndRenderSimilar();
         setGameOver();
       }
 
@@ -321,6 +356,7 @@
       state.surrendered = true;
       saveState();
       renderReveal(card);
+      fetchAndRenderSimilar();
       setGameOver();
     } catch (err) {
       console.error(err);

@@ -66,6 +66,23 @@ class SimilarityIndex:
         rank = int(np.sum(scores[0] > guess_score)) + 1
         return rank
 
+    def similar_to(self, oracle_id: str, limit: int = 10) -> list[dict]:
+        """Returns the `limit` most similar cards to oracle_id, excluding itself."""
+        row = self.oracle_id_to_row.get(oracle_id)
+        if row is None:
+            return []
+        vec = self.embeddings[row].reshape(1, -1)
+        scores, indices = self.index.search(vec, limit + 1)  # +1 because self is always #1
+        results = []
+        for score, idx in zip(scores[0], indices[0]):
+            card = self.cards[idx]
+            if card.get("oracle_id") == oracle_id:
+                continue
+            results.append({**card, "similarity_pct": round(float(score) * 100)})
+            if len(results) >= limit:
+                break
+        return results
+
     def card_by_oracle_id(self, oracle_id: str) -> Optional[dict]:
         row = self.oracle_id_to_row.get(oracle_id)
         return self.cards[row] if row is not None else None
