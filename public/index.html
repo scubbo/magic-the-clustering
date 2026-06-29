@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Magic the Clustering</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Magic the Clustering</h1>
+    <p class="subtitle">Guess today's secret Magic card by similarity.</p>
+  </header>
+
+  <main>
+    <section id="guess-section">
+      <div id="autocomplete-wrapper">
+        <input
+          id="guess-input"
+          type="text"
+          autocomplete="off"
+          placeholder="Type a card name…"
+          aria-label="Card name"
+          aria-autocomplete="list"
+          aria-controls="autocomplete-list"
+        />
+        <ul id="autocomplete-list" role="listbox" hidden></ul>
+      </div>
+      <button id="guess-btn" type="button">Guess</button>
+      <button id="surrender-btn" type="button" class="secondary">Give up</button>
+    </section>
+
+    <section id="best-guess-section" hidden aria-live="polite">
+      <p class="best-guess-label">Best so far</p>
+      <div class="best-guess-row">
+        <span id="best-guess-name"></span>
+        <div class="sim-bar-wrapper">
+          <div class="sim-bar">
+            <div id="best-guess-bar" class="sim-bar-fill"></div>
+          </div>
+          <span id="best-guess-pct" class="sim-pct"></span>
+        </div>
+        <span id="best-guess-rank" class="rank-cell"></span>
+      </div>
+    </section>
+
+    <section id="result-section" hidden>
+      <h2>Today's card was…</h2>
+      <div id="revealed-card"></div>
+      <div id="similar-cards" hidden>
+        <h3>Most similar cards</h3>
+        <table id="similar-table">
+          <thead>
+            <tr><th>Card</th><th>Cost</th><th>Similarity</th></tr>
+          </thead>
+          <tbody id="similar-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="history-section">
+      <table id="history-table" aria-label="Guess history">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Card</th>
+            <th>Cost</th>
+            <th>Similarity</th>
+            <th>Rank</th>
+          </tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <details id="about">
+    <summary>About this game</summary>
+    <div class="about-content">
+      <h3>How to play</h3>
+      <ul>
+        <li>A secret Magic: The Gathering card is chosen each day — the same card for everyone.</li>
+        <li>Type a card name in the search box and submit your guess.</li>
+        <li>You'll see a <strong>similarity score</strong> (0–100%) showing how close your guess is to the target, plus a <strong>rank</strong> — how many of the ~22,000 cards in the pool are more similar to the target than your guess.</li>
+        <li>Keep guessing! Higher similarity and lower rank means you're getting warmer.</li>
+        <li>The game ends when you find the card, or you can surrender to reveal it.</li>
+        <li>The puzzle resets at midnight.</li>
+      </ul>
+      <h3>How similarity works</h3>
+      <p>Each card is represented as a vector (a list of numbers) combining two sources of information:</p>
+      <ul>
+        <li><strong>Text embedding</strong> — the card's name, type line, and rules text are fed through <em>all-mpnet-base-v2</em>, a neural language model trained on general English. It maps similar-sounding rules into nearby points in a 768-dimensional space. This means cards sharing mechanics ("draw a card", "counter target spell", "when this enters the battlefield…") cluster together — even when the wording differs.</li>
+        <li><strong>Structured features</strong> — mana cost and pip breakdown, color identity, card type, power/toughness, loyalty, rarity, and the card's set era.</li>
+      </ul>
+      <p>Similarity is <a href="https://en.wikipedia.org/wiki/Cosine_similarity" target="_blank" rel="noopener">cosine similarity</a> between these combined vectors. Two cards are "similar" if they share mechanics, mana cost shape, color identity, and card type — not just superficial properties like name or art.</p>
+      <p class="about-note">Flavor text and keywords (Flying, Trample, etc.) are excluded as explicit features — keyword text already appears in the oracle text and is captured by the embedding.</p>
+      <p class="about-note">The current card pool covers Modern-legal cards (~22,000 cards). Commander-legal coverage is planned once this version has been tested.</p>
+    </div>
+  </details>
+
+  <div id="card-tooltip" hidden>
+    <img id="card-tooltip-img" alt="" />
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "buildCommand": "echo 'no build'",
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.py" }
+  ]
+}

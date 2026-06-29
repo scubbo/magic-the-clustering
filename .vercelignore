@@ -1,0 +1,4 @@
+.venv/
+data/
+artifacts/index.faiss
+requirements-vectorize.txt
