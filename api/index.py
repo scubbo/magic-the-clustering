@@ -150,8 +150,6 @@ def surrender():
     return CardResponse(**{k: target.get(k) for k in CardResponse.model_fields})
 
 
-# Serve frontend static files — local dev only.
-# On Vercel, the public/ directory is served by the edge CDN instead.
-_public = Path(__file__).parent.parent / "public"
-if _public.exists():
-    app.mount("/", StaticFiles(directory=str(_public), html=True), name="static")
+_static = Path(__file__).parent / "static"
+if _static.exists():
+    app.mount("/", StaticFiles(directory=str(_static), html=True), name="static")
