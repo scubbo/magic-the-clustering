@@ -69,14 +69,17 @@ class CardResponse(BaseModel):
 def debug():
     task_dir = Path(__file__).parent.parent
     try:
-        contents = sorted(str(p.relative_to(task_dir)) for p in task_dir.rglob("*") if p.is_file())
+        top_level = sorted(str(p.relative_to(task_dir)) for p in task_dir.iterdir())
+        api_dir = sorted(str(p.relative_to(task_dir)) for p in (task_dir / "api").iterdir()) if (task_dir / "api").exists() else []
     except Exception as e:
-        contents = [f"ERROR: {e}"]
+        top_level = [f"ERROR: {e}"]
+        api_dir = []
     return {
         "file": str(Path(__file__)),
         "task_dir": str(task_dir),
         "public_exists": (task_dir / "public").exists(),
-        "contents": contents[:100],
+        "top_level": top_level,
+        "api_dir": api_dir,
     }
 
 
