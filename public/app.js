@@ -54,12 +54,23 @@
     return "tier-cold";
   }
 
+  function renderManaCost(manaCost) {
+    if (!manaCost) return "";
+    return [...manaCost.matchAll(/\{([^}]+)\}/g)]
+      .map(([, sym]) => `<img class="mana-sym" src="https://svgs.scryfall.io/card-symbols/${encodeURIComponent(sym)}.svg" alt="{${escHtml(sym)}}" title="{${escHtml(sym)}}">`)
+      .join("");
+  }
+
   function renderGuessRow(guess, index) {
     const tr = document.createElement("tr");
     const tier = simTier(guess.similarity_pct);
     tr.innerHTML = `
       <td>${index + 1}</td>
-      <td>${escHtml(guess.name)}</td>
+      <td>
+        <div class="card-name-cell">${escHtml(guess.name)}</div>
+        <div class="card-type-cell">${escHtml(guess.type_line || "")}</div>
+      </td>
+      <td class="mana-cost-cell">${renderManaCost(guess.mana_cost)}</td>
       <td class="sim-bar-cell">
         <div class="sim-bar-wrapper">
           <div class="sim-bar">
@@ -234,6 +245,8 @@
       const entry = {
         oracle_id: oracleId,
         name: card.name,
+        type_line: card.type_line || "",
+        mana_cost: card.mana_cost || "",
         similarity_pct: result.similarity_pct,
         rank: result.rank,
       };

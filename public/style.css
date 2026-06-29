@@ -173,6 +173,12 @@ button:disabled { opacity: 0.4; cursor: default; }
 
 .rank-cell { color: var(--muted); font-size: 0.85rem; }
 
+.card-name-cell { font-weight: 500; }
+.card-type-cell { color: var(--muted); font-size: 0.8rem; margin-top: 0.1rem; }
+
+.mana-cost-cell { white-space: nowrap; }
+.mana-sym { width: 1.1rem; height: 1.1rem; vertical-align: middle; margin-right: 1px; }
+
 /* Pinned best guess */
 #best-guess-section {
   background: var(--surface);
