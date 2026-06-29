@@ -12,8 +12,16 @@ BULK_DATA_API = "https://api.scryfall.com/bulk-data"
 DATA_DIR = Path(__file__).parent.parent / "data"
 
 
+_HEADERS = {"User-Agent": "magic-the-clustering/0.1 (contact: scubbojj@gmail.com)"}
+
+
+def _open(url: str):
+    req = urllib.request.Request(url, headers=_HEADERS)
+    return urllib.request.urlopen(req)
+
+
 def _get_oracle_cards_url() -> str:
-    with urllib.request.urlopen(BULK_DATA_API) as resp:
+    with _open(BULK_DATA_API) as resp:
         payload = json.load(resp)
     for entry in payload["data"]:
         if entry["type"] == "oracle_cards":
@@ -26,7 +34,8 @@ def download(dest: Path = DATA_DIR / "cards.json") -> Path:
     print("Fetching current oracle_cards download URL...", flush=True)
     url = _get_oracle_cards_url()
     print(f"Downloading from {url} ...", flush=True)
-    urllib.request.urlretrieve(url, dest)
+    with _open(url) as resp, open(dest, "wb") as out:
+        out.write(resp.read())
     print(f"Saved to {dest}", flush=True)
     return dest
 
