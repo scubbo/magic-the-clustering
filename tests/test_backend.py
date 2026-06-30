@@ -424,6 +424,14 @@ def test_hints_returns_empty_for_unknown_card(hint_idx):
     assert hints == []
 
 
+def test_hints_mana_value_computed_correctly(hint_idx):
+    # bolt CMC 1 vs archangel CMC 5: max_cmc=5, sim = 1 - 4/5 = 0.2 → 20%
+    hints = hint_idx.feature_hints("bolt", "archangel")
+    mv = next((h for h in hints if h["feature"] == "Mana value"), None)
+    assert mv is not None
+    assert mv["similarity_pct"] == 20
+
+
 def test_hints_both_colorless_color_similarity_is_100(hint_idx):
     # Sol Ring is colorless; two colorless cards should have 100% color similarity
     # Add a second colorless card temporarily

@@ -112,6 +112,10 @@ def save_artifacts(cards: list[dict], embeddings: np.ndarray, out_dir: Path) -> 
             "rarity": c.get("rarity"),
             "set": c.get("set"),
             "set_name": c.get("set_name"),
+            "colors": c.get("colors") or [],
+            "color_identity": c.get("color_identity") or [],
+            "cmc": c.get("cmc") or 0.0,
+            "keywords": c.get("keywords") or [],
         }
         for c in cards
     ]
