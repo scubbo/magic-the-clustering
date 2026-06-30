@@ -27,6 +27,10 @@ def _parse_types(type_line: str) -> set:
 def _jaccard(a: set, b: set) -> float:
     union = a | b
     return len(a & b) / len(union) if union else 1.0
+
+
+_TEXT_DIMS = 768  # all-mpnet-base-v2 output dimension
+
 ARTIFACTS_DIR = ROOT / "artifacts"
 
 
@@ -103,15 +107,33 @@ class SimilarityIndex:
         """Non-deterministic random card for practice mode."""
         return random.choice(self.cards)
 
+    def _oracle_text_similarity(self, row_a: int, row_b: int) -> Optional[float]:
+        """
+        Cosine similarity of the text-embedding portion of two combined vectors.
+        cosine(combined_a[:n], combined_b[:n]) == cosine(text_a, text_b) because
+        the 0.75 weights and per-card L2 norms cancel in the normalisation.
+        """
+        n = min(_TEXT_DIMS, self.embeddings.shape[1])
+        va = self.embeddings[row_a, :n]
+        vb = self.embeddings[row_b, :n]
+        norm_a = float(np.linalg.norm(va))
+        norm_b = float(np.linalg.norm(vb))
+        if norm_a == 0 or norm_b == 0:
+            return None
+        return max(0.0, min(1.0, float(np.dot(va, vb)) / (norm_a * norm_b)))
+
     def feature_hints(self, guess_id: str, target_id: str) -> list[dict]:
         """
-        Returns the two most-similar named feature groups between guess and target.
-        Computed from card metadata; does not use embeddings.
+        Returns the two most-similar named feature groups between guess and target,
+        plus oracle text similarity (always shown even if not in the top two).
         """
         guess = self.card_by_oracle_id(guess_id)
         target = self.card_by_oracle_id(target_id)
         if not guess or not target:
             return []
+
+        row_guess = self.oracle_id_to_row.get(guess_id)
+        row_target = self.oracle_id_to_row.get(target_id)
 
         scores: dict[str, float] = {}
 
@@ -133,9 +155,19 @@ class SimilarityIndex:
         if g_kw or t_kw:
             scores["Keywords"] = _jaccard(g_kw, t_kw)
 
+        oracle_sim = self._oracle_text_similarity(row_guess, row_target) if row_guess is not None and row_target is not None else None
+        if oracle_sim is not None:
+            scores["Oracle text"] = oracle_sim
+
         # Sort descending by score, then alphabetically for deterministic tie-breaking
         ranked = sorted(scores.items(), key=lambda x: (-x[1], x[0]))
-        return [{"feature": k, "similarity_pct": round(v * 100)} for k, v in ranked[:2]]
+        top2 = ranked[:2]
+
+        result = list(top2)
+        if oracle_sim is not None and not any(k == "Oracle text" for k, _ in top2):
+            result.append(("Oracle text", oracle_sim))
+
+        return [{"feature": k, "similarity_pct": round(v * 100)} for k, v in result]
 
 
 @lru_cache(maxsize=1)

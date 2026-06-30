@@ -108,6 +108,7 @@ def _make_mock_index(daily_target_id: str = "aaa"):
     mock.feature_hints.return_value = [
         {"feature": "Card type", "similarity_pct": 100},
         {"feature": "Colors", "similarity_pct": 100},
+        {"feature": "Oracle text", "similarity_pct": 72},
     ]
 
     mock.random_card.return_value = MOCK_CARDS[1]
@@ -348,11 +349,13 @@ FEATURE_HINT_CARDS = [
 
 @pytest.fixture()
 def hint_idx():
-    """Minimal SimilarityIndex for feature_hints — no embeddings needed."""
+    """Minimal SimilarityIndex for feature_hints — uses small identity embeddings."""
     from backend.similarity import SimilarityIndex
     instance = SimilarityIndex.__new__(SimilarityIndex)
     instance.cards = FEATURE_HINT_CARDS
     instance.oracle_id_to_row = {c["oracle_id"]: i for i, c in enumerate(FEATURE_HINT_CARDS)}
+    # Identity matrix: each card has orthogonal text vectors → text sim = 0 between different cards
+    instance.embeddings = np.eye(len(FEATURE_HINT_CARDS), 10, dtype=np.float32)
     return instance
 
 
@@ -361,9 +364,17 @@ def test_hints_returns_list(hint_idx):
     assert isinstance(hints, list)
 
 
-def test_hints_returns_at_most_two(hint_idx):
+def test_hints_oracle_text_always_present(hint_idx):
     hints = hint_idx.feature_hints("bolt", "strike")
-    assert len(hints) <= 2
+    names = [h["feature"] for h in hints]
+    assert "Oracle text" in names
+
+
+def test_hints_oracle_text_not_duplicated_when_in_top_two(hint_idx):
+    # When oracle text would naturally be in the top 2, it should appear exactly once
+    hints = hint_idx.feature_hints("bolt", "bolt")  # self-comparison: all features 100%
+    names = [h["feature"] for h in hints]
+    assert names.count("Oracle text") == 1
 
 
 def test_hints_each_has_feature_and_pct(hint_idx):
@@ -426,6 +437,7 @@ def test_hints_both_colorless_color_similarity_is_100(hint_idx):
     ]
     instance.cards = cards
     instance.oracle_id_to_row = {c["oracle_id"]: i for i, c in enumerate(cards)}
+    instance.embeddings = np.eye(len(cards), 10, dtype=np.float32)
     hints = instance.feature_hints("sol", "vault")
     color_hint = next((h for h in hints if h["feature"] == "Colors"), None)
     if color_hint:
