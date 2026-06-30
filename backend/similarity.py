@@ -12,6 +12,21 @@ from typing import Optional
 import numpy as np
 
 ROOT = Path(__file__).parent.parent
+
+_MAIN_TYPES = {
+    "Creature", "Instant", "Sorcery", "Enchantment",
+    "Artifact", "Land", "Planeswalker", "Battle", "Kindred",
+}
+
+
+def _parse_types(type_line: str) -> set:
+    main_part = type_line.split("—")[0] if "—" in type_line else type_line
+    return {w for w in main_part.split() if w in _MAIN_TYPES}
+
+
+def _jaccard(a: set, b: set) -> float:
+    union = a | b
+    return len(a & b) / len(union) if union else 1.0
 ARTIFACTS_DIR = ROOT / "artifacts"
 
 
@@ -83,6 +98,44 @@ class SimilarityIndex:
         d = for_date or date.today()
         rng = random.Random(d.isoformat())
         return rng.choice(self.cards)
+
+    def random_card(self) -> dict:
+        """Non-deterministic random card for practice mode."""
+        return random.choice(self.cards)
+
+    def feature_hints(self, guess_id: str, target_id: str) -> list[dict]:
+        """
+        Returns the two most-similar named feature groups between guess and target.
+        Computed from card metadata; does not use embeddings.
+        """
+        guess = self.card_by_oracle_id(guess_id)
+        target = self.card_by_oracle_id(target_id)
+        if not guess or not target:
+            return []
+
+        scores: dict[str, float] = {}
+
+        g_colors = set(guess.get("colors") or [])
+        t_colors = set(target.get("colors") or [])
+        scores["Colors"] = _jaccard(g_colors, t_colors)
+
+        g_types = _parse_types(guess.get("type_line") or "")
+        t_types = _parse_types(target.get("type_line") or "")
+        scores["Card type"] = _jaccard(g_types, t_types)
+
+        g_cmc = float(guess.get("cmc") or 0)
+        t_cmc = float(target.get("cmc") or 0)
+        max_cmc = max(g_cmc, t_cmc, 1.0)
+        scores["Mana value"] = 1.0 - abs(g_cmc - t_cmc) / max_cmc
+
+        g_kw = set(guess.get("keywords") or [])
+        t_kw = set(target.get("keywords") or [])
+        if g_kw or t_kw:
+            scores["Keywords"] = _jaccard(g_kw, t_kw)
+
+        # Sort descending by score, then alphabetically for deterministic tie-breaking
+        ranked = sorted(scores.items(), key=lambda x: (-x[1], x[0]))
+        return [{"feature": k, "similarity_pct": round(v * 100)} for k, v in ranked[:2]]
 
 
 @lru_cache(maxsize=1)

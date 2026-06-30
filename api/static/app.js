@@ -3,11 +3,14 @@
 
   const API = "/api";
   const TODAY = new Date().toISOString().slice(0, 10);
-  const STORAGE_KEY = `mtg-cluster-${TODAY}`;
 
   // ---------------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------------
+  let practiceTargetId = null; // non-null when in practice mode
+  function getStorageKey() {
+    return practiceTargetId ? `mtg-cluster-practice-${practiceTargetId}` : `mtg-cluster-${TODAY}`;
+  }
   let state = loadState();
   let selectedOracleId = null;
   let autocompleteItems = [];
@@ -32,6 +35,11 @@
   const bestGuessRank = document.getElementById("best-guess-rank");
   const cardTooltip = document.getElementById("card-tooltip");
   const cardTooltipImg = document.getElementById("card-tooltip-img");
+  const practiceBtn = document.getElementById("practice-btn");
+  const dailyBtn = document.getElementById("daily-btn");
+  const newPracticeBtn = document.getElementById("new-practice-btn");
+  const resultHeading = document.getElementById("result-heading");
+  const modeSubtitle = document.getElementById("mode-subtitle");
 
   // ---------------------------------------------------------------------------
   // Card image tooltip
@@ -67,14 +75,14 @@
   // ---------------------------------------------------------------------------
   function loadState() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(getStorageKey());
       if (raw) return JSON.parse(raw);
     } catch (_) {}
     return { guesses: [], won: false, surrendered: false };
   }
 
   function saveState() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(getStorageKey(), JSON.stringify(state));
   }
 
   // ---------------------------------------------------------------------------
@@ -111,6 +119,7 @@
           </div>
           <span class="sim-pct">${guess.similarity_pct}%</span>
         </div>
+        ${guess.top_features?.length ? `<div class="feature-hints">${guess.top_features.map(f => `${escHtml(f.feature)} (${f.similarity_pct}%)`).join(" · ")}</div>` : ""}
       </td>
       <td class="rank-cell">#${guess.rank}</td>
     `;
@@ -150,6 +159,7 @@
 
   function renderReveal(card) {
     resultSection.hidden = false;
+    resultHeading.textContent = practiceTargetId ? "The card was…" : "Today's card was…";
     revealedCard.innerHTML = `
       ${card.image_uri ? `<img src="${escHtml(card.image_uri)}" alt="${escHtml(card.name)}" />` : ""}
       <div class="card-name">${escHtml(card.name)}</div>
@@ -157,9 +167,12 @@
     `;
   }
 
-  async function fetchAndRenderSimilar() {
+  async function fetchAndRenderSimilar(targetId = null) {
     try {
-      const res = await fetch(`${API}/similar?limit=10`);
+      const url = targetId
+        ? `${API}/similar?limit=10&target_id=${encodeURIComponent(targetId)}`
+        : `${API}/similar?limit=10`;
+      const res = await fetch(url);
       if (!res.ok) return;
       const cards = await res.json();
       similarBody.innerHTML = "";
@@ -188,10 +201,14 @@
     }
   }
 
+  function setInputEnabled(enabled) {
+    input.disabled = !enabled;
+    guessBtn.disabled = !enabled;
+    surrenderBtn.disabled = !enabled;
+  }
+
   function setGameOver() {
-    input.disabled = true;
-    guessBtn.disabled = true;
-    surrenderBtn.disabled = true;
+    setInputEnabled(false);
   }
 
   // ---------------------------------------------------------------------------
@@ -204,10 +221,12 @@
   }
 
   async function submitGuess(oracleId) {
+    const body = { oracle_id: oracleId };
+    if (practiceTargetId) body.target_id = practiceTargetId;
     const res = await fetch(`${API}/guess`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ oracle_id: oracleId }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`Guess failed: ${res.status}`);
     return res.json();
@@ -316,6 +335,7 @@
         image_uri: card.image_uri || "",
         similarity_pct: result.similarity_pct,
         rank: result.rank,
+        top_features: result.top_features || [],
       };
       state.guesses.push(entry);
 
@@ -323,8 +343,9 @@
         state.won = true;
         bestGuessSection.hidden = true;
         renderReveal(card);
-        fetchAndRenderSimilar();
+        fetchAndRenderSimilar(practiceTargetId);
         setGameOver();
+        if (practiceTargetId) newPracticeBtn.hidden = false;
       }
 
       saveState();
@@ -341,30 +362,72 @@
 
   async function handleSurrender() {
     if (state.won || state.surrendered) return;
-    // Daily endpoint gives us the card count but not the target id —
-    // surrender is implemented by revealing after a confirmed "give up" action.
-    // We call a special endpoint that the server exposes only for this purpose.
-    // For now: fetch today's target via the guess endpoint by passing a sentinel.
-    // Actually, we don't expose the target directly. Instead we reveal by guessing
-    // the target, but we don't know it. Surrender must go via the backend.
-    // Simple approach: add GET /api/daily/reveal once the player surrenders.
-    // For the MVP, the server exposes /api/surrender which returns the target card.
     try {
-      const res = await fetch(`${API}/surrender`, { method: "POST" });
+      const body = practiceTargetId ? { target_id: practiceTargetId } : {};
+      const res = await fetch(`${API}/surrender`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
       if (!res.ok) throw new Error("Surrender failed");
       const card = await res.json();
       state.surrendered = true;
       saveState();
       renderReveal(card);
-      fetchAndRenderSimilar();
+      fetchAndRenderSimilar(practiceTargetId);
       setGameOver();
+      if (practiceTargetId) newPracticeBtn.hidden = false;
     } catch (err) {
       console.error(err);
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Practice mode
+  // ---------------------------------------------------------------------------
+  async function startPractice() {
+    try {
+      const res = await fetch(`${API}/practice/new`);
+      if (!res.ok) throw new Error("Failed to start practice");
+      const { oracle_id } = await res.json();
+      practiceTargetId = oracle_id;
+      state = { guesses: [], won: false, surrendered: false };
+      resultSection.hidden = true;
+      similarCards.hidden = true;
+      newPracticeBtn.hidden = true;
+      bestGuessSection.hidden = true;
+      setInputEnabled(true);
+      renderHistory();
+      practiceBtn.hidden = true;
+      dailyBtn.hidden = false;
+      modeSubtitle.textContent = "Practice mode — guessing a random card.";
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function returnToDaily() {
+    practiceTargetId = null;
+    state = loadState();
+    resultSection.hidden = true;
+    similarCards.hidden = true;
+    newPracticeBtn.hidden = true;
+    practiceBtn.hidden = false;
+    dailyBtn.hidden = true;
+    modeSubtitle.textContent = "Guess today's secret Magic card by similarity.";
+    renderHistory();
+    if (state.won || state.surrendered) {
+      setGameOver();
+    } else {
+      setInputEnabled(true);
+    }
+  }
+
   guessBtn.addEventListener("click", handleGuess);
   surrenderBtn.addEventListener("click", handleSurrender);
+  practiceBtn.addEventListener("click", startPractice);
+  dailyBtn.addEventListener("click", returnToDaily);
+  newPracticeBtn.addEventListener("click", startPractice);
 
   // ---------------------------------------------------------------------------
   // Init

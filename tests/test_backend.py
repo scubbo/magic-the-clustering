@@ -25,6 +25,10 @@ MOCK_CARDS = [
         "rarity": "common",
         "set": "lea",
         "set_name": "Limited Edition Alpha",
+        "colors": ["R"],
+        "color_identity": ["R"],
+        "cmc": 1.0,
+        "keywords": [],
     },
     {
         "oracle_id": "bbb",
@@ -36,6 +40,10 @@ MOCK_CARDS = [
         "rarity": "common",
         "set": "m13",
         "set_name": "Magic 2013",
+        "colors": ["R"],
+        "color_identity": ["R"],
+        "cmc": 2.0,
+        "keywords": [],
     },
     {
         "oracle_id": "ccc",
@@ -47,6 +55,10 @@ MOCK_CARDS = [
         "rarity": "common",
         "set": "lea",
         "set_name": "Limited Edition Alpha",
+        "colors": [],
+        "color_identity": ["G"],
+        "cmc": 0.0,
+        "keywords": [],
     },
 ]
 
@@ -92,6 +104,13 @@ def _make_mock_index(daily_target_id: str = "aaa"):
     mock.search_by_name.side_effect = _search
 
     mock.similar_to.side_effect = lambda oid, limit=10: _make_mock_similar(MOCK_CARDS, oid, limit)
+
+    mock.feature_hints.return_value = [
+        {"feature": "Card type", "similarity_pct": 100},
+        {"feature": "Colors", "similarity_pct": 100},
+    ]
+
+    mock.random_card.return_value = MOCK_CARDS[1]
 
     target_card = _card_by_oracle_id(daily_target_id)
     mock.daily_target.return_value = target_card
@@ -143,6 +162,37 @@ def test_guess_wrong(client):
 
 def test_guess_unknown_id(client):
     resp = client.post("/api/guess", json={"oracle_id": "zzz"})
+    assert resp.status_code == 404
+
+
+def test_guess_returns_top_features(client):
+    resp = client.post("/api/guess", json={"oracle_id": "bbb"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "top_features" in data
+    assert len(data["top_features"]) > 0
+    for hint in data["top_features"]:
+        assert "feature" in hint
+        assert "similarity_pct" in hint
+
+
+def test_guess_with_practice_target(client):
+    resp = client.post("/api/guess", json={"oracle_id": "bbb", "target_id": "bbb"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["is_correct"] is True
+    assert data["oracle_id"] == "bbb"
+
+
+def test_guess_with_practice_target_wrong(client):
+    resp = client.post("/api/guess", json={"oracle_id": "aaa", "target_id": "ccc"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["is_correct"] is False
+
+
+def test_guess_with_unknown_practice_target(client):
+    resp = client.post("/api/guess", json={"oracle_id": "aaa", "target_id": "zzz"})
     assert resp.status_code == 404
 
 
@@ -216,3 +266,167 @@ def test_surrender_returns_target(client):
     data = resp.json()
     assert data["oracle_id"] == "aaa"
     assert data["name"] == "Lightning Bolt"
+
+
+def test_surrender_with_practice_target(client):
+    resp = client.post("/api/surrender", json={"target_id": "bbb"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["oracle_id"] == "bbb"
+    assert data["name"] == "Lightning Strike"
+
+
+def test_surrender_with_unknown_practice_target(client):
+    resp = client.post("/api/surrender", json={"target_id": "zzz"})
+    assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# /api/practice/new
+# ---------------------------------------------------------------------------
+
+def test_practice_new_returns_oracle_id(client):
+    resp = client.get("/api/practice/new")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "oracle_id" in data
+    assert data["oracle_id"] in [c["oracle_id"] for c in MOCK_CARDS]
+
+
+# ---------------------------------------------------------------------------
+# feature_hints unit tests (directly on SimilarityIndex, no API layer)
+# ---------------------------------------------------------------------------
+
+FEATURE_HINT_CARDS = [
+    {
+        "oracle_id": "bolt",
+        "name": "Lightning Bolt",
+        "type_line": "Instant",
+        "colors": ["R"],
+        "color_identity": ["R"],
+        "cmc": 1.0,
+        "keywords": [],
+    },
+    {
+        "oracle_id": "strike",
+        "name": "Lightning Strike",
+        "type_line": "Instant",
+        "colors": ["R"],
+        "color_identity": ["R"],
+        "cmc": 2.0,
+        "keywords": [],
+    },
+    {
+        "oracle_id": "birds",
+        "name": "Birds of Paradise",
+        "type_line": "Creature — Bird",
+        "colors": ["G"],
+        "color_identity": ["G"],
+        "cmc": 1.0,
+        "keywords": ["Flying"],
+    },
+    {
+        "oracle_id": "archangel",
+        "name": "Archangel of Thune",
+        "type_line": "Legendary Creature — Angel",
+        "colors": ["W"],
+        "color_identity": ["W"],
+        "cmc": 5.0,
+        "keywords": ["Flying", "Lifelink"],
+    },
+    {
+        "oracle_id": "sol_ring",
+        "name": "Sol Ring",
+        "type_line": "Artifact",
+        "colors": [],
+        "color_identity": [],
+        "cmc": 1.0,
+        "keywords": [],
+    },
+]
+
+
+@pytest.fixture()
+def hint_idx():
+    """Minimal SimilarityIndex for feature_hints — no embeddings needed."""
+    from backend.similarity import SimilarityIndex
+    instance = SimilarityIndex.__new__(SimilarityIndex)
+    instance.cards = FEATURE_HINT_CARDS
+    instance.oracle_id_to_row = {c["oracle_id"]: i for i, c in enumerate(FEATURE_HINT_CARDS)}
+    return instance
+
+
+def test_hints_returns_list(hint_idx):
+    hints = hint_idx.feature_hints("bolt", "strike")
+    assert isinstance(hints, list)
+
+
+def test_hints_returns_at_most_two(hint_idx):
+    hints = hint_idx.feature_hints("bolt", "strike")
+    assert len(hints) <= 2
+
+
+def test_hints_each_has_feature_and_pct(hint_idx):
+    hints = hint_idx.feature_hints("bolt", "strike")
+    for h in hints:
+        assert "feature" in h
+        assert "similarity_pct" in h
+        assert 0 <= h["similarity_pct"] <= 100
+
+
+def test_hints_sorted_descending(hint_idx):
+    hints = hint_idx.feature_hints("bolt", "archangel")
+    pcts = [h["similarity_pct"] for h in hints]
+    assert pcts == sorted(pcts, reverse=True)
+
+
+def test_hints_same_type_included(hint_idx):
+    # Both Lightning Bolt and Lightning Strike are Instants
+    hints = hint_idx.feature_hints("bolt", "strike")
+    names = [h["feature"] for h in hints]
+    assert "Card type" in names
+
+
+def test_hints_same_color_included(hint_idx):
+    # Both are Red
+    hints = hint_idx.feature_hints("bolt", "strike")
+    names = [h["feature"] for h in hints]
+    assert "Colors" in names
+
+
+def test_hints_keywords_included_when_present(hint_idx):
+    # Birds has [Flying], Archangel has [Flying, Lifelink] — keyword overlap exists
+    hints = hint_idx.feature_hints("birds", "archangel")
+    names = [h["feature"] for h in hints]
+    assert "Keywords" in names
+
+
+def test_hints_keywords_omitted_when_both_empty(hint_idx):
+    # Lightning Bolt and Strike both have no keywords
+    hints = hint_idx.feature_hints("bolt", "strike")
+    names = [h["feature"] for h in hints]
+    assert "Keywords" not in names
+
+
+def test_hints_returns_empty_for_unknown_card(hint_idx):
+    hints = hint_idx.feature_hints("bolt", "unknown")
+    assert hints == []
+
+
+def test_hints_both_colorless_color_similarity_is_100(hint_idx):
+    # Sol Ring is colorless; two colorless cards should have 100% color similarity
+    # Add a second colorless card temporarily
+    from backend.similarity import SimilarityIndex
+    instance = SimilarityIndex.__new__(SimilarityIndex)
+    cards = [
+        {"oracle_id": "sol", "name": "Sol Ring", "type_line": "Artifact",
+         "colors": [], "color_identity": [], "cmc": 1.0, "keywords": []},
+        {"oracle_id": "vault", "name": "Black Lotus", "type_line": "Artifact",
+         "colors": [], "color_identity": [], "cmc": 0.0, "keywords": []},
+    ]
+    instance.cards = cards
+    instance.oracle_id_to_row = {c["oracle_id"]: i for i, c in enumerate(cards)}
+    hints = instance.feature_hints("sol", "vault")
+    color_hint = next((h for h in hints if h["feature"] == "Colors"), None)
+    if color_hint:
+        assert color_hint["similarity_pct"] == 100

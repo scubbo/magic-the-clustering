@@ -179,6 +179,8 @@ button:disabled { opacity: 0.4; cursor: default; }
 
 .rank-cell { color: var(--muted); font-size: 0.85rem; }
 
+.feature-hints { font-size: 0.7rem; color: var(--muted); margin-top: 3px; }
+
 .card-name-cell { font-weight: 500; cursor: default; }
 .card-name-cell[data-image-uri] { cursor: pointer; }
 .card-type-cell { color: var(--muted); font-size: 0.8rem; margin-top: 0.1rem; }

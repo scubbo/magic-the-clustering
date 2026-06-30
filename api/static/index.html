@@ -9,7 +9,7 @@
 <body>
   <header>
     <h1>Magic the Clustering</h1>
-    <p class="subtitle">Guess today's secret Magic card by similarity.</p>
+    <p id="mode-subtitle" class="subtitle">Guess today's secret Magic card by similarity.</p>
   </header>
 
   <main>
@@ -28,6 +28,8 @@
       </div>
       <button id="guess-btn" type="button">Guess</button>
       <button id="surrender-btn" type="button" class="secondary">Give up</button>
+      <button id="practice-btn" type="button" class="secondary">🎲 Practice</button>
+      <button id="daily-btn" type="button" class="secondary" hidden>← Daily challenge</button>
     </section>
 
     <section id="best-guess-section" hidden aria-live="polite">
@@ -45,7 +47,8 @@
     </section>
 
     <section id="result-section" hidden>
-      <h2>Today's card was…</h2>
+      <h2 id="result-heading">Today's card was…</h2>
+      <button id="new-practice-btn" type="button" hidden>New card →</button>
       <div id="revealed-card"></div>
       <div id="similar-cards" hidden>
         <h3>Most similar cards</h3>
